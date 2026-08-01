@@ -8,7 +8,7 @@ from datetime import date
 def littleTransform(df):
     Data = df.copy()
     
-    # Is weekend (Fixed to use local 'Data' instead of global 'data')
+    # Is weekend
     Data['Is_Weekend'] = Data['Days'].apply(lambda x: 1 if x > 5 else 0)
     
     # Season
@@ -36,7 +36,7 @@ def littleTransform(df):
     
     return Data
 
-# 2. LOAD MODELS (Cached so it doesn't reload on every button click)
+# 2. LOAD MODELS (Cached so it runs fast)
 @st.cache_resource
 def load_models():
     pipeline = joblib.load('my_pipeline.pkl')
@@ -54,27 +54,31 @@ st.write("Enter today's weather and pollution data to predict tomorrow's Air Qua
 
 today = date.today()
 
-st.header("Today's Data")
-col1, col2 = st.columns(2)
+# 4. WRAP INPUTS IN A FORM TO PREVENT LAG / RE-RUNS ON EVERY KEYPRESS
+with st.form("aqi_form"):
+    st.header("Today's Data")
+    col1, col2 = st.columns(2)
 
-with col1:
-    date_input = st.number_input("Date", min_value=1, max_value=31, value=today.day)
-    month = st.number_input("Month", min_value=1, max_value=12, value=today.month)
-    year = st.number_input("Year", min_value=2021, max_value=2050, value=today.year)
-    days = st.number_input("Day of Week (1=Mon, 7=Sun)", min_value=1, max_value=7, value=today.isoweekday())
-    holidays = st.selectbox("Is today a Holiday?", [0, 1])
+    with col1:
+        date_input = st.number_input("Date", min_value=1, max_value=31, value=today.day)
+        month = st.number_input("Month", min_value=1, max_value=12, value=today.month)
+        year = st.number_input("Year", min_value=2021, max_value=2050, value=today.year)
+        days = st.number_input("Day of Week (1=Mon, 7=Sun)", min_value=1, max_value=7, value=today.isoweekday())
+        holidays = st.selectbox("Is today a Holiday?", [0, 1])
 
-with col2:
-    pm25 = st.number_input("PM2.5", min_value=0.0, value=50.0)
-    pm10 = st.number_input("PM10", min_value=0.0, value=100.0)
-    no2 = st.number_input("NO2", min_value=0.0, value=30.0)
-    so2 = st.number_input("SO2", min_value=0.0, value=15.0)
-    co = st.number_input("CO", min_value=0.0, value=1.0)
-    ozone = st.number_input("Ozone", min_value=0.0, value=35.0)
+    with col2:
+        pm25 = st.number_input("PM2.5", min_value=0.1, value=50.0)
+        pm10 = st.number_input("PM10", min_value=0.1, value=100.0)
+        no2 = st.number_input("NO2", min_value=0.1, value=30.0)
+        so2 = st.number_input("SO2", min_value=0.1, value=15.0)
+        co = st.number_input("CO", min_value=0.1, value=1.0)
+        ozone = st.number_input("Ozone", min_value=0.1, value=35.0)
 
-# 4. PREDICTION LOGIC
-if st.button("🔮 Predict Tomorrow's AQI"):
-    # Structure input exactly like the original training CSV
+    # Form Submit Button
+    submitted = st.form_submit_button("🔮 Predict Tomorrow's AQI")
+
+# 5. PREDICTION LOGIC
+if submitted:
     input_data = pd.DataFrame({
         'Date': [date_input],
         'Month': [month],
@@ -111,4 +115,4 @@ if st.button("🔮 Predict Tomorrow's AQI"):
             st.error("🟣 **Very Unhealthy / Hazardous:** Health warnings of emergency conditions.")
             
     except Exception as e:
-        st.error(f"An error occurred: {e}")
+        st.error(f"An error occurred during prediction: {e}")
